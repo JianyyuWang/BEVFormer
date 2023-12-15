@@ -72,7 +72,7 @@ class PerceptionTransformer(BaseModule):
         self.level_embeds = nn.Parameter(torch.Tensor(
             self.num_feature_levels, self.embed_dims))
         self.cams_embeds = nn.Parameter(
-            torch.Tensor(self.num_cams, self.embed_dims))
+            torch.Tensor(self.num_cams, self.embed_dims))  # 将相机的参数embedding成的feature
         self.reference_points = nn.Linear(self.embed_dims, 3)
         self.can_bus_mlp = nn.Sequential(
             nn.Linear(18, self.embed_dims // 2),
@@ -115,9 +115,9 @@ class PerceptionTransformer(BaseModule):
         obtain bev features.
         """
 
-        bs = mlvl_feats[0].size(0)
-        bev_queries = bev_queries.unsqueeze(1).repeat(1, bs, 1)
-        bev_pos = bev_pos.flatten(2).permute(2, 0, 1)
+        bs = mlvl_feats[0].size(0) # for one timestep [1, 6, 256, 116, 200] 6 means 6 camera view feature
+        bev_queries = bev_queries.unsqueeze(1).repeat(1, bs, 1) # [200*200, 256] -> [200*200, 1, 256]
+        bev_pos = bev_pos.flatten(2).permute(2, 0, 1) # [1, 256, 200, 200] -> [200*200, 1, 256]
 
         # obtain rotation angle and shift with ego motion
         delta_x = np.array([each['can_bus'][0]
@@ -166,12 +166,12 @@ class PerceptionTransformer(BaseModule):
         for lvl, feat in enumerate(mlvl_feats):
             bs, num_cam, c, h, w = feat.shape
             spatial_shape = (h, w)
-            feat = feat.flatten(3).permute(1, 0, 3, 2)
+            feat = feat.flatten(3).permute(1, 0, 3, 2) # for one timestep [1, 6, 256, 116, 200] -> [6, 1, 23200, 256]
             if self.use_cams_embeds:
-                feat = feat + self.cams_embeds[:, None, None, :].to(feat.dtype)
+                feat = feat + self.cams_embeds[:, None, None, :].to(feat.dtype)  # 将相机的参数embedding成的feature(这里只是简单的区分不同idx的camera)
             feat = feat + self.level_embeds[None,
-                                            None, lvl:lvl + 1, :].to(feat.dtype)
-            spatial_shapes.append(spatial_shape)
+                                            None, lvl:lvl + 1, :].to(feat.dtype)  # 这个是不同layer的idx信息embedding
+            spatial_shapes.append(spatial_shape) # ([116, 200], [58, 100], [29, 50], [15, 26])
             feat_flatten.append(feat)
 
         feat_flatten = torch.cat(feat_flatten, 2)

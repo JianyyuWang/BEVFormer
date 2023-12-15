@@ -60,7 +60,7 @@ class BEVFormerEncoder(TransformerLayerSequence):
         # reference points in 3D space, used in spatial cross-attention (SCA)
         if dim == '3d':
             zs = torch.linspace(0.5, Z - 0.5, num_points_in_pillar, dtype=dtype,
-                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z
+                                device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z  # 在一个bev中选择4个z轴上的点，以得到一个好的高度中的embedding
             xs = torch.linspace(0.5, W - 0.5, W, dtype=dtype,
                                 device=device).view(1, 1, W).expand(num_points_in_pillar, H, W) / W
             ys = torch.linspace(0.5, H - 0.5, H, dtype=dtype,
@@ -188,14 +188,14 @@ class BEVFormerEncoder(TransformerLayerSequence):
         ref_3d = self.get_reference_points(
             bev_h, bev_w, self.pc_range[5]-self.pc_range[2], self.num_points_in_pillar, dim='3d', bs=bev_query.size(1),  device=bev_query.device, dtype=bev_query.dtype)
         ref_2d = self.get_reference_points(
-            bev_h, bev_w, dim='2d', bs=bev_query.size(1), device=bev_query.device, dtype=bev_query.dtype)
-
+            bev_h, bev_w, dim='2d', bs=bev_query.size(1), device=bev_query.device, dtype=bev_query.dtype)  # 2d beav的坐标，不是映射到images上的坐标
+        # reference_points_cam: [6, 1, 40000, 4, 2] bev_mask:[6, 1, 40000, 4] 这里的4表示ref_3d中在每个pillar处采样4个高度不同的点
         reference_points_cam, bev_mask = self.point_sampling(
-            ref_3d, self.pc_range, kwargs['img_metas'])
+            ref_3d, self.pc_range, kwargs['img_metas'])  # 得到每一个camera view的point的映射，并得到相应的bev mask,表示当前point在当前view中是否能够映射到
 
         # bug: this code should be 'shift_ref_2d = ref_2d.clone()', we keep this bug for reproducing our results in paper.
         shift_ref_2d = ref_2d.clone()
-        shift_ref_2d += shift[:, None, None, :]
+        shift_ref_2d += shift[:, None, None, :]  # 车子在移动时的距离，需要加上这个信息，就能对齐timestamp
 
         # (num_query, bs, embed_dims) -> (bs, num_query, embed_dims)
         bev_query = bev_query.permute(1, 0, 2)

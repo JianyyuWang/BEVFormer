@@ -176,7 +176,7 @@ def main():
 
     # create work_dir
     mmcv.mkdir_or_exist(osp.abspath(cfg.work_dir))
-    # dump config
+    # dump config 内部参数为转储配置文件到对应的work_dir中，做一个记录
     cfg.dump(osp.join(cfg.work_dir, osp.basename(args.config)))
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
@@ -201,7 +201,7 @@ def main():
     logger.info('Environment info:\n' + dash_line + env_info + '\n' +
                 dash_line)
     meta['env_info'] = env_info
-    meta['config'] = cfg.pretty_text
+    meta['config'] = cfg.pretty_text  # 该配置文件的连成一行的信息
 
     # log some basic info
     logger.info(f'Distributed training: {distributed}')
@@ -218,8 +218,8 @@ def main():
 
     model = build_model(
         cfg.model,
-        train_cfg=cfg.get('train_cfg'),
-        test_cfg=cfg.get('test_cfg'))
+        train_cfg=cfg.get('train_cfg'),  # 这个train_config和test_config是历史遗留问题，不必太在意，现在都集成到cfg.model中
+        test_cfg=cfg.get('test_cfg'))  # 这里开始构建模型
     model.init_weights()
 
     logger.info(f'Model:\n{model}')
